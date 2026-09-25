@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>红色警戒2 - Web复刻版</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; }
+
+#game { position: relative; width: 100%; height: 100%; display: flex; }
+
+/* ---- battlefield ---- */
+#battlefield { position: relative; flex: 1; overflow: hidden; background: #0a0a12; cursor: default; }
+#mainCanvas { position: absolute; top: 0; left: 0; image-rendering: pixelated; }
+
+/* ---- RA2 sidebar ---- */
+#sidebar {
+    width: 172px; height: 100%; flex-shrink: 0; position: relative;
+    background: linear-gradient(180deg, #1c2a3a 0%, #101820 100%);
+    border-left: 2px solid #3a4a5a;
+    display: flex; flex-direction: column;
+    box-shadow: -4px 0 12px rgba(0,0,0,.6);
+}
+/* top strip: power + radar */
+#sideTop { padding: 6px 6px 4px; }
+#powerBar {
+    height: 14px; background: #0a0f14; border: 1px solid #3a4a5a; border-radius: 2px;
+    position: relative; overflow: hidden; margin-bottom: 6px;
+}
+#powerFill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg,#e8c840,#f5e05a); width: 0%; transition: width .3s; }
+#powerFill.low { background: linear-gradient(90deg,#c83020,#e85030); }
+#powerText { position: absolute; inset: 0; text-align: center; font-size: 9px; line-height: 13px; color: #fff; text-shadow: 0 1px 2px #000; z-index: 2; }
+#radar {
+    width: 100%; aspect-ratio: 1.28; background: #060a10; border: 2px solid #46586a;
+    border-radius: 3px; position: relative; overflow: hidden;
+    box-shadow: inset 0 0 18px rgba(0,40,80,.5);
+    cursor: pointer;
+}
+#radarCanvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+#radar .rlabel { position: absolute; top: 2px; left: 4px; font-size: 8px; color: #7a95b0; letter-spacing: 2px; }
+
+/* tabs */
+#tabs { display: flex; margin: 4px 6px 0; gap: 2px; }
+.tab {
+    flex: 1; padding: 4px 0; text-align: center; font-size: 10px; color: #8aa5c0;
+    background: #16222e; border: 1px solid #2c3c4c; border-bottom: none;
+    border-radius: 3px 3px 0 0; cursor: pointer;
+}
+.tab.active { color: #fff; background: #24374a; border-color: #4a6078; }
+.tab.disabled { color: #44515e; cursor: not-allowed; }
+
+/* build grid */
+#buildGrid {
+    flex: 1; margin: 0 6px; padding: 4px; overflow-y: auto;
+    background: #0d151d; border: 1px solid #2c3c4c;
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; align-content: start;
+}
+#buildGrid::-webkit-scrollbar { width: 6px; }
+#buildGrid::-webkit-scrollbar-thumb { background: #2c3c4c; }
+.slot {
+    aspect-ratio: 1.2; position: relative; background: #131f2b;
+    border: 1px solid #2c3c4c; cursor: pointer; overflow: hidden;
+}
+.slot img { width: 100%; height: 100%; image-rendering: pixelated; object-fit: contain; }
+.slot:hover:not(.locked) { border-color: #6a90b8; background: #1a2a3a; }
+.slot.locked { opacity: .35; cursor: not-allowed; }
+.slot .cost { position: absolute; bottom: 0; right: 2px; font-size: 8px; color: #ffd858; text-shadow: 0 1px 1px #000; }
+.slot .prog { position: absolute; left: 0; bottom: 0; top: auto; width: 100%; height: 3px; background: #08c820; }
+.slot .progfill { height: 100%; background: #38e848; width: 0%; }
+.slot .ready { position: absolute; inset: 0; background: rgba(40,200,60,.25); display: none; animation: blink 0.6s infinite alternate; }
+.slot .queueCount { position: absolute; top: 1px; right: 2px; font-size: 9px; color: #7af; text-shadow: 0 1px 1px #000; }
+@keyframes blink { from { opacity: .3; } to { opacity: .75; } }
+
+/* bottom: credits + controls */
+#sideBottom { padding: 6px; border-top: 1px solid #2c3c4c; }
+#credits {
+    font-family: "Courier New", monospace; font-size: 15px; font-weight: bold;
+    color: #ffd858; text-align: right; text-shadow: 0 0 6px rgba(255,200,40,.4);
+    background: #0a1018; border: 1px solid #2c3c4c; padding: 3px 8px; margin-bottom: 6px;
+    letter-spacing: 1px;
+}
+#controls { display: flex; gap: 4px; }
+.cbtn {
+    flex: 1; padding: 4px 0; text-align: center; font-size: 10px; color: #9ab5d0;
+    background: #16222e; border: 1px solid #2c3c4c; border-radius: 2px; cursor: pointer;
+}
+.cbtn:hover { background: #24374a; color: #fff; }
+.cbtn.active { background: #2a5040; border-color: #3a7860; color: #7ae8a0; }
+
+/* ---- top bar / github ---- */
+#githubLink {
+    position: absolute; top: 8px; right: 186px; z-index: 30;
+    display: flex; align-items: center; gap: 5px; padding: 4px 9px;
+    background: rgba(20,30,44,.85); border: 1px solid #3a4a5a; border-radius: 14px;
+    color: #cfe0f0; font-size: 11px; text-decoration: none; line-height: 1;
+    transition: all .15s;
+}
+#githubLink:hover { background: rgba(40,60,84,.95); border-color: #6a90b8; color: #fff; }
+#githubLink svg { width: 14px; height: 14px; fill: currentColor; }
+
+/* ---- overlays ---- */
+#loading {
+    position: absolute; inset: 0; z-index: 100; background: #060a10;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    color: #cfe0f0; transition: opacity .5s;
+}
+#loading .title { font-size: 34px; font-weight: bold; color: #d83828; text-shadow: 0 0 24px rgba(216,56,40,.5); letter-spacing: 4px; }
+#loading .title span { color: #3878d8; text-shadow: 0 0 24px rgba(56,120,216,.5); }
+#loading .sub { font-size: 12px; color: #6a85a0; }
+#loading .bar { width: 320px; height: 10px; background: #0d151d; border: 1px solid #2c3c4c; border-radius: 5px; overflow: hidden; }
+#loading .bar div { height: 100%; width: 0%; background: linear-gradient(90deg, #d83828, #f0a028); transition: width .2s; }
+#loading.hidden { opacity: 0; pointer-events: none; }
+
+#startScreen {
+    position: absolute; inset: 0; z-index: 90; display: none;
+    flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+    background: radial-gradient(ellipse at center, #182636 0%, #060a10 75%);
+}
+#startScreen h1 { font-size: 42px; color: #d83828; text-shadow: 0 0 30px rgba(216,56,40,.6); letter-spacing: 6px; }
+#startScreen h2 { font-size: 14px; color: #6a85a0; font-weight: normal; margin-top: -10px; }
+.sidePick { display: flex; gap: 22px; margin-top: 8px; }
+.sideCard {
+    width: 200px; padding: 18px 14px; text-align: center; cursor: pointer;
+    background: rgba(16,26,38,.9); border: 2px solid #2c3c4c; border-radius: 6px;
+    transition: all .15s;
+}
+.sideCard:hover { transform: translateY(-3px); border-color: #6a90b8; }
+.sideCard h3 { font-size: 19px; margin-bottom: 6px; }
+.sideCard.ally h3 { color: #4a9af0; } .sideCard.sov h3 { color: #e05038; }
+.sideCard p { font-size: 11px; color: #7a95b0; line-height: 1.5; }
+.diffRow { display: flex; gap: 10px; margin-top: 6px; }
+.diff {
+    padding: 7px 18px; background: #16222e; border: 1px solid #2c3c4c; color: #9ab5d0;
+    border-radius: 3px; cursor: pointer; font-size: 12px;
+}
+.diff:hover { border-color: #6a90b8; color: #fff; }
+.diff.sel { background: #2a5040; border-color: #3a7860; color: #7ae8a0; }
+#startBtn {
+    margin-top: 16px; padding: 12px 46px; font-size: 17px; letter-spacing: 3px;
+    background: linear-gradient(180deg, #d83828, #a02418); color: #fff; border: 1px solid #e86850;
+    border-radius: 4px; cursor: pointer; text-shadow: 0 1px 2px rgba(0,0,0,.5);
+}
+#startBtn:hover { filter: brightness(1.15); }
+
+#pauseMenu {
+    position: absolute; inset: 0; z-index: 95; display: none;
+    align-items: center; justify-content: center; background: rgba(4,8,14,.72);
+}
+#pauseMenu .panel { background: #101822; border: 2px solid #3a4a5a; border-radius: 8px; padding: 26px 40px; text-align: center; }
+#pauseMenu h2 { color: #fff; margin-bottom: 18px; letter-spacing: 4px; }
+#pauseMenu button {
+    display: block; width: 190px; margin: 8px auto; padding: 9px 0;
+    background: #1a2838; border: 1px solid #3a4a5a; color: #cfe0f0;
+    border-radius: 3px; cursor: pointer; font-size: 13px;
+}
+#pauseMenu button:hover { background: #24374a; color: #fff; }
+
+#endScreen {
+    position: absolute; inset: 0; z-index: 96; display: none;
+    flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    background: rgba(4,8,14,.85);
+}
+#endScreen h1 { font-size: 46px; letter-spacing: 8px; }
+#endScreen h1.win { color: #4ade68; text-shadow: 0 0 30px rgba(74,222,104,.5); }
+#endScreen h1.lose { color: #e05038; text-shadow: 0 0 30px rgba(224,80,56,.5); }
+#endScreen .stats { color: #9ab5d0; font-size: 12px; line-height: 1.9; text-align: center; }
+#endScreen button {
+    margin-top: 14px; padding: 10px 40px; font-size: 15px;
+    background: #1a2838; border: 1px solid #3a4a5a; color: #cfe0f0; border-radius: 3px; cursor: pointer;
+}
+
+/* tooltip */
+#tooltip {
+    position: absolute; z-index: 50; display: none; pointer-events: none;
+    background: rgba(10,18,28,.95); border: 1px solid #3a4a5a; border-radius: 3px;
+    padding: 5px 9px; font-size: 11px; color: #cfe0f0; max-width: 190px;
+}
+#tooltip b { color: #ffd858; font-size: 12px; }
+#tooltip .dim { color: #6a85a0; font-size: 10px; }
+
+/* event toast */
+#toast {
+    position: absolute; top: 44px; left: 50%; transform: translateX(-50%);
+    background: rgba(16,26,38,.92); border: 1px solid #3a4a5a; border-radius: 3px;
+    color: #ffd858; font-size: 12px; padding: 6px 16px; z-index: 40; display: none;
+}
+#swBar { position: absolute; top: 8px; left: 8px; z-index: 25; display: flex; gap: 6px; }
+.swIcon {
+    width: 44px; height: 44px; background: rgba(16,26,38,.9); border: 2px solid #3a4a5a; border-radius: 4px;
+    position: relative; cursor: pointer; overflow: hidden;
+}
+.swIcon img { width: 100%; height: 100%; image-rendering: pixelated; object-fit: contain; }
+.swIcon .cd { position: absolute; inset: 0; background: rgba(0,0,0,.65); }
+.swIcon .cdTxt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: bold; text-shadow: 0 1px 2px #000; }
+.swIcon.ready img { animation: blink 0.5s infinite alternate; }
+.swIcon .key { position: absolute; top: 0; left: 2px; font-size: 8px; color: #7a95b0; }
+</style>
+</head>
+<body>
+<div id="game">
+    <div id="battlefield">
+        <canvas id="mainCanvas"></canvas>
+        <a id="githubLink" href="https://github.com/43aquarius/web-redalert" target="_blank" title="GitHub 源码仓库">
+            <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+            GitHub
+        </a>
+        <div id="swBar"></div>
+        <div id="toast"></div>
+    </div>
+    <div id="sidebar">
+        <div id="sideTop">
+            <div id="powerBar"><div id="powerFill"></div><div id="powerText">电力</div></div>
+            <div id="radar"><canvas id="radarCanvas"></canvas><span class="rlabel">雷达</span></div>
+        </div>
+        <div id="tabs">
+            <div class="tab" data-tab="buildings">建筑</div>
+            <div class="tab" data-tab="infantry">步兵</div>
+            <div class="tab" data-tab="vehicles">载具</div>
+        </div>
+        <div id="buildGrid"></div>
+        <div id="sideBottom">
+            <div id="credits">$ 0</div>
+            <div id="controls">
+                <div class="cbtn" id="btnRepair" title="维修模式">维修</div>
+                <div class="cbtn" id="btnSell" title="出售模式">出售</div>
+                <div class="cbtn" id="btnPause" title="暂停">暂停</div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="loading">
+    <div class="title">红色警戒<span>2</span></div>
+    <div class="sub">正在加载原版素材…</div>
+    <div class="bar"><div id="loadBar"></div></div>
+</div>
+<div id="startScreen">
+    <h1>红色警戒 2</h1>
+    <h2>Web 复刻版 · 原版素材 · 原版数值</h2>
+    <div class="sidePick">
+        <div class="sideCard ally" data-side="allied">
+            <h3>盟军</h3>
+            <p>灰熊坦克 · 光棱科技 · 超时空传送<br>灵活机动，科技制胜</p>
+        </div>
+        <div class="sideCard sov" data-side="soviet">
+            <h3>苏军</h3>
+            <p>犀牛坦克 · 磁暴科技 · 核弹打击<br>钢铁洪流，暴力碾压</p>
+        </div>
+    </div>
+    <div class="diffRow">
+        <div class="diff" data-diff="easy">简单</div>
+        <div class="diff sel" data-diff="normal">普通</div>
+        <div class="diff" data-diff="hard">困难</div>
+    </div>
+    <button id="startBtn">开 战</button>
+</div>
+<div id="pauseMenu">
+    <div class="panel">
+        <h2>暂 停</h2>
+        <button id="btnResume">继续作战</button>
+        <button id="btnRestart">重新开局</button>
+    </div>
+</div>
+<div id="endScreen">
+    <h1 id="endTitle"></h1>
+    <div class="stats" id="endStats"></div>
+    <button id="btnAgain">再战一局</button>
+</div>
+<div id="tooltip"></div>
+
+<script src="data.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

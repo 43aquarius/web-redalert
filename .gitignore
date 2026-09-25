@@ -1,0 +1,87 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+local-*
+.claude
+.z-ai-config
+*.log
+dev.log
+dev.out.log
+test
+prompt
+
+server.log
+# Skills directory
+/skills/
+# 沙箱脚手架 (非游戏代码)
+/examples/
+/mini-services/
+/tests/
+/upload/
+/download/*
+!download/redalert2.html
+/Caddyfile
+/db/
+/.zscripts/
+/.agent/
+agent-ctx/
+
+# 原版素材提取工作区 (大文件, 不入库)
+assets_raw/
+node_retry.log
+tool-results/
+
+# raw game asset downloads (1.4GB+, rebuild via scripts)
+assets_raw2/
+research/
+tool-results/
+dev.log
+tsconfig.tsbuildinfo
+
+# generated atlases (embedded in single html; rebuild via scripts)
+assets_ra2/
+
+# old next.js dev output
+.next/
+download/*
+!download/redalert2.html
+tools/
