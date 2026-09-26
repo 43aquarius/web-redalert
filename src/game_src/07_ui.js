@@ -128,11 +128,11 @@ class UI {
       defs[cat].push({ id, def: b, type: 'building' });
     }
     for (const [id, u] of Object.entries(g.data.infantry)) {
-      if (u.side !== side) continue;
+      if (u.side !== side && u.side !== 'both') continue;
       defs.infantry.push({ id, def: u, type: 'unit' });
     }
     for (const [id, u] of Object.entries(g.data.vehicles)) {
-      if (u.side !== side) continue;
+      if (u.side !== side && u.side !== 'both') continue;
       defs.vehicles.push({ id, def: u, type: 'unit' });
     }
     return defs;

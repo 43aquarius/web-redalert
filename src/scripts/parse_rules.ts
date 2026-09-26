@@ -35,6 +35,26 @@ const ROSTER = {
   },
 };
 
+// explicit side classification (Owner lists all countries — unreliable)
+const SIDE_MAP: Record<string, string> = {
+  aconyard: 'allied', apower: 'allied', arefinery: 'allied', awarfactory: 'allied', abarracks: 'allied',
+  airforce: 'allied', prismtower: 'allied', pillbox: 'allied', abattlelab: 'allied', arepair: 'allied',
+  chronosphere: 'allied', weather: 'allied', gapgen: 'allied', anavyard: 'allied',
+  sconyard: 'soviet', spower: 'soviet', srefinery: 'soviet', swarfactory: 'soviet', sbarracks: 'soviet',
+  sradar: 'soviet', teslacoil: 'soviet', sbattlelab: 'soviet', srepair: 'soviet', nuclearmissile: 'soviet',
+  flakcannon: 'soviet', snavyard: 'soviet', ironcurtain: 'soviet',
+};
+const VEHICLE_SIDES: Record<string, string> = {
+  harvester: 'both', mcv: 'allied', smcv: 'soviet', rhino: 'soviet', grizzly: 'allied',
+  teslatank: 'soviet', prismtank: 'allied', ifv: 'allied', v3launcher: 'soviet',
+  robotank: 'allied', ltnk: 'allied', htk: 'soviet', harrier: 'allied', kirov: 'soviet',
+};
+const INF_SIDES: Record<string, string> = {
+  gi: 'allied', conscript: 'soviet', teslatrooper: 'soviet', engineer: 'both', crazyivan: 'soviet',
+  desolator: 'soviet', dog: 'both', spy: 'allied', chronolegion: 'allied', tanya: 'allied',
+  sniper: 'allied', flaktrooper: 'soviet',
+};
+
 const num = (v: string | undefined, d = 0) => {
   if (v === undefined) return d;
   const n = parseFloat(v.replace('%', ''));
@@ -71,8 +91,7 @@ const buildings: Record<string, any> = {};
 for (const [id, key] of Object.entries(ROSTER.buildings)) {
   const sec = rules.sections[key];
   if (!sec) { console.log('MISSING building rules:', key); continue; }
-  const owner = String(sec.Owner ?? '');
-  const side = owner.includes('Russians') || owner.includes('Confederation') || owner.includes('Africans') || owner.includes('Arabs') ? 'soviet' : (id.startsWith('s') ? 'soviet' : 'allied');
+  const side = SIDE_MAP[id] ?? (id.startsWith('s') ? 'soviet' : 'allied');
   const fact = sec.Factory;
   buildings[id] = {
     name_key: sec.UIName ?? ('Name:' + key),
@@ -99,8 +118,7 @@ const vehicles: Record<string, any> = {};
 for (const [id, key] of Object.entries(ROSTER.vehicles)) {
   const sec = rules.sections[key];
   if (!sec) { console.log('MISSING vehicle rules:', key); continue; }
-  const owner = String(sec.Owner ?? '');
-  const side = /Russian|Confederation|African|Arab/i.test(owner) ? 'soviet' : 'allied';
+  const side = VEHICLE_SIDES[id] ?? 'allied';
   vehicles[id] = {
     name_key: sec.UIName ?? ('Name:' + key),
     cost: num(sec.Cost), strength: num(sec.Strength, 100),
@@ -122,8 +140,7 @@ for (const [id, key] of Object.entries(ROSTER.infantry)) {
   let sec = rules.sections[key];
   let artSec = art.sections[key];
   if (!sec) { console.log('MISSING infantry rules:', key); continue; }
-  const owner = String(sec.Owner ?? '');
-  const side = /Russian|Confederation|African|Arab/i.test(owner) ? 'soviet' : 'allied';
+  const side = INF_SIDES[id] ?? 'allied';
   infantry[id] = {
     name_key: sec.UIName ?? ('Name:' + key),
     cost: num(sec.Cost), strength: num(sec.Strength, 50),
