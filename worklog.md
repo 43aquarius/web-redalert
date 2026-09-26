@@ -119,3 +119,32 @@ Work Log:
 Stage Summary:
 - assets_ra2/ 完整图形+音频素材就绪 (~26MB): 图集+manifest 全部 VLM 审查通过
 - 待: 单HTML引擎重写 → E2E测试 → 推送GitHub
+
+---
+Task ID: 5
+Agent: 主Agent (Super Z)
+Task: 参照 ts-redalert2 完全重构（用户反馈 v2 bug 太多无法游玩）
+
+Work Log:
+- 克隆 github.com/huangkaoya/ts-redalert2 研究: React+Three.js 引擎, 复用其 MixFile/Blowfish/DataStream/ShpFile/TmpFile 解析器(Bun 离线运行)
+- 从 download.ra2web.com/full-pack.7z (115MB) 解出真实游戏文件: RA2.MIX(282MB)/LANGUAGE.MIX/THEME.MIX
+- 嵌套 MIX 解析: 21 个档案全部识别(conquer/generic/local/isogen/isotemp/temperat/sidec01/02 + 4 战役档)
+- NewTheater 命名规律: 建筑名第2字符为剧场占位符 → generic.mix 藏全部 128 个建筑 SHP (ggcnst/ggpowr/ngtsla...)
+- 关键 bug 修复记录(自研提取管线):
+  1. VXL span 必须按引用实现顺序读(逐span seek 导致 z 越界 520)
+  2. TMP 子图字段偏移 +4(extraX@20 非 16); 瓦片=900字节菱形扫描序非矩形
+  3. SHP 0x0 帧 = "全画布" TS 风格; imageData 字段名
+  4. CSF vlen=字符数(×2字节) + Uint16Array 长度用 vbytes
+  5. getBytes() 返回视图 + DataStream._realloc 越界 → 拷贝修复
+- 资产产出(834 PNG + 19 EVA + 5 音乐): 建筑27/建造动画19/载具14+炮塔8(体素32向光栅化)/步兵14/地形瓦片523/矿石宝石32/动画25/侧边栏94/ cameo45
+- 461 条语音 WAV 用 ASR 逐条识别 → 发现按 eva.ini DialogList 顺序配对排列 → 建立 19 条关键 EVA 事件映射(Construction Complete/Unit Ready/Low Power/Nuclear missile launched...)
+- THEME.MIX 全零(重打包方移除音乐) → 沿用 RA1 原版 OST (Frank Klepacki)
+- 战斗音效缺失 → WebAudio 合成(炮击/爆炸/磁暴/V3/光棱)
+- 引擎重写(9 模块): 固定步长30fps / A*+视线平滑+连通性保证 / 采矿闭环 / 电力 / 弹道+光束 / 超武3种 / AI指挥官 / 原版侧边栏+cameo / 战争迷雾+雷达
+- E2E 验证(浏览器自动化): 加载→标题→开局→建造放置(幽灵预览)→生产→AI建造6建筑17单位→战斗→胜利/失败结算 全部通过; 3分钟+5分钟模拟零异常
+- 修复的引擎 bug: 语法错误(对象简写)/minimapCanvas/相机钳制越界/鼠标(0,0)边缘滚动/工厂类型名(InfantryType)/地基从art.ini读/AI前置条件映射/烟尘特效泄漏/受击反击+卡死目标超时
+
+Stage Summary:
+- v3 完全重构完成: 真实原版素材 + 全新引擎 + 单 HTML (26MB)
+- redalert2.html E2E 全流程通过, 控制台零报错
+- 推送 GitHub 43aquarius/web-redalert
